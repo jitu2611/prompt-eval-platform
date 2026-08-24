@@ -33,6 +33,31 @@ Prompt catalog + datasets -> evaluation runner -> local model adapter
 
 Java 21, Spring Boot, PostgreSQL, React, Maven, Docker, Kubernetes, Prometheus, and optional Ollama. The local development path uses only free and open-source software.
 
+## Local API usage
+
+Run PostgreSQL locally, set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and
+`SPRING_DATASOURCE_PASSWORD`, then start the application with `./mvnw spring-boot:run`.
+Flyway creates the prompt catalog tables on startup.
+
+Create a template; its submitted content becomes immutable version 1:
+
+```sh
+curl -i -X POST http://localhost:8080/api/prompt-templates \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"support-summary","content":"Summarize this ticket: {{ticket}}"}'
+```
+
+Create a revision by using the returned template ID. Existing versions are retained unchanged:
+
+```sh
+curl -i -X POST http://localhost:8080/api/prompt-templates/<template-id>/versions \
+  -H 'Content-Type: application/json' \
+  -d '{"content":"Give a concise summary of this ticket: {{ticket}}"}'
+```
+
+Template names must be non-blank and at most 120 characters. Version content must be non-blank
+and at most 50,000 characters.
+
 ## Engineering standards
 
 - Issues, feature branches, and pull requests
