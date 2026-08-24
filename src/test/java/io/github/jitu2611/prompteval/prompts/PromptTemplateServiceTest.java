@@ -36,6 +36,29 @@ class PromptTemplateServiceTest {
 	}
 
 	@Test
+	void getsATemplateWithItsVersionsInVersionOrder() {
+		PromptTemplate template = new PromptTemplate("summarize");
+		template.addVersion("Summarize {{text}}");
+		template.addVersion("Summarize briefly {{text}}");
+		when(repository.findById(template.getId())).thenReturn(java.util.Optional.of(template));
+
+		PromptTemplateResponse response = service.get(template.getId());
+
+		assertThat(response.name()).isEqualTo("summarize");
+		assertThat(response.versions()).extracting(PromptTemplateVersionResponse::version).containsExactly(1, 2);
+	}
+
+	@Test
+	void rejectsUnknownTemplatesWhenGettingThem() {
+		UUID templateId = UUID.randomUUID();
+		when(repository.findById(templateId)).thenReturn(java.util.Optional.empty());
+
+		assertThatThrownBy(() -> service.get(templateId))
+				.isInstanceOfSatisfying(ResponseStatusException.class,
+						exception -> assertThat(exception.getStatusCode().value()).isEqualTo(404));
+	}
+
+	@Test
 	void addsTheNextVersionWithoutChangingTheExistingVersion() {
 		PromptTemplate template = new PromptTemplate("summarize");
 		template.addVersion("Summarize {{text}}");

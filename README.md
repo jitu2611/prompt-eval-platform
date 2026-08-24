@@ -55,6 +55,12 @@ curl -i -X POST http://localhost:8080/api/prompt-templates/<template-id>/version
   -d '{"content":"Give a concise summary of this ticket: {{ticket}}"}'
 ```
 
+Retrieve a template and its versions, ordered by version number:
+
+```sh
+curl -i http://localhost:8080/api/prompt-templates/<template-id>
+```
+
 Template names must be non-blank and at most 120 characters. Version content must be non-blank
 and at most 50,000 characters.
 

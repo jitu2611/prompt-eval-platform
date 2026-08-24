@@ -22,11 +22,19 @@ class PromptTemplateService {
 		return toResponse(repository.save(template));
 	}
 
+	PromptTemplateResponse get(UUID templateId) {
+		return toResponse(findTemplate(templateId));
+	}
+
 	PromptTemplateResponse addVersion(UUID templateId, CreatePromptTemplateVersionRequest request) {
-		PromptTemplate template = repository.findById(templateId)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Prompt template not found"));
+		PromptTemplate template = findTemplate(templateId);
 		template.addVersion(request.content());
 		return toResponse(template);
+	}
+
+	private PromptTemplate findTemplate(UUID templateId) {
+		return repository.findById(templateId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Prompt template not found"));
 	}
 
 	private PromptTemplateResponse toResponse(PromptTemplate template) {

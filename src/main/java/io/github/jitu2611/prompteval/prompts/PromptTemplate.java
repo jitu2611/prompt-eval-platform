@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ class PromptTemplate {
 	private Instant createdAt;
 
 	@OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("versionNumber ASC")
 	private List<PromptTemplateVersion> versions = new ArrayList<>();
 
 	protected PromptTemplate() {
