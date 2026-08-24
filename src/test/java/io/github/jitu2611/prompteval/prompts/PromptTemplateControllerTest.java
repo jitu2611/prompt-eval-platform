@@ -8,11 +8,13 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 @WebFluxTest(PromptTemplateController.class)
 class PromptTemplateControllerTest {
@@ -55,6 +57,35 @@ class PromptTemplateControllerTest {
 						""")
 				.exchange()
 				.expectStatus().isBadRequest();
+	}
+
+	@Test
+	void getsATemplateWithVersionsInVersionOrder() {
+		UUID templateId = UUID.randomUUID();
+		when(service.get(templateId)).thenReturn(new PromptTemplateResponse(
+				templateId, "summarize", Instant.parse("2026-01-01T00:00:00Z"), List.of(
+						new PromptTemplateVersionResponse(
+								UUID.randomUUID(), 1, "Summarize {{text}}", Instant.parse("2026-01-01T00:00:00Z")),
+						new PromptTemplateVersionResponse(
+								UUID.randomUUID(), 2, "Summarize briefly {{text}}", Instant.parse("2026-01-02T00:00:00Z")))));
+
+		client.get().uri("/api/prompt-templates/{templateId}", templateId)
+				.exchange()
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$.id").isEqualTo(templateId.toString())
+				.jsonPath("$.versions[0].version").isEqualTo(1)
+				.jsonPath("$.versions[1].version").isEqualTo(2);
+	}
+
+	@Test
+	void returnsNotFoundForAnUnknownTemplate() {
+		UUID templateId = UUID.randomUUID();
+		when(service.get(templateId)).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Prompt template not found"));
+
+		client.get().uri("/api/prompt-templates/{templateId}", templateId)
+				.exchange()
+				.expectStatus().isNotFound();
 	}
 
 	@Test
