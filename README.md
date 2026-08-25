@@ -64,6 +64,25 @@ curl -i http://localhost:8080/api/prompt-templates/<template-id>
 Template names must be non-blank and at most 120 characters. Version content must be non-blank
 and at most 50,000 characters.
 
+Create an evaluation dataset with one or more repeatable cases. Each case supplies prompt input
+variables and the output expected by a future evaluator:
+
+```sh
+curl -i -X POST http://localhost:8080/api/evaluation-datasets \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name":"support-ticket-classification",
+    "cases":[{
+      "inputVariables":{"ticket":"I cannot log in"},
+      "expectedOutput":"Login issue"
+    }]
+  }'
+```
+
+Dataset names must be non-blank and at most 120 characters. A dataset needs at least one case;
+case input-variable keys are non-blank and at most 120 characters, while input values and expected
+outputs are limited to 50,000 characters. Cases are retained in their submitted order.
+
 ## Engineering standards
 
 - Issues, feature branches, and pull requests
