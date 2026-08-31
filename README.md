@@ -79,6 +79,12 @@ curl -i -X POST http://localhost:8080/api/evaluation-datasets \
   }'
 ```
 
+Retrieve a dataset and its cases, ordered by case number, using the returned dataset ID:
+
+```sh
+curl -i http://localhost:8080/api/evaluation-datasets/<dataset-id>
+```
+
 Dataset names must be non-blank and at most 120 characters. A dataset needs at least one case;
 case input-variable keys are non-blank and at most 120 characters, while input values and expected
 outputs are limited to 50,000 characters. Cases are retained in their submitted order.
