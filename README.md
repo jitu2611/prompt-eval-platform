@@ -4,6 +4,12 @@ A cloud-neutral platform for versioning prompts, running repeatable evaluations,
 
 > **Status:** public work in progress. Core prompt-version and dataset APIs are available; the evaluation-run workflow is tracked in the [v0.1.0 milestone](../../milestone/1). This repository does not yet represent a production release.
 
+## Release progress
+
+![v0.1.0 release progress](docs/images/release-progress.svg)
+
+The progress view is a manual, scope-based snapshot of the [v0.1.0 milestone](../../milestone/1); it is intentionally not derived from commit count or activity volume.
+
 ## Problem
 
 Prompt changes are software changes, but many teams cannot reproduce, compare, or approve them with the same discipline as code. This project makes prompt releases measurable with datasets, evaluation criteria, run history, and model comparisons.
@@ -21,13 +27,12 @@ Prompt changes are software changes, but many teams cannot reproduce, compare, o
 
 The first release is a modular monolith. Its domain boundaries are prompt catalog, dataset management, execution, evaluation, and reporting. This keeps local setup simple while preserving future extraction paths.
 
-```text
-Prompt catalog + datasets -> evaluation runner -> local model adapter
-                                      |                  |
-                                 run history        normalized output
-                                      |
-                              comparison / quality gate
-```
+![Architecture diagram](docs/images/architecture.svg)
+
+## Capability chart
+
+![Capability implementation chart](docs/images/capability-chart.svg)
+
 
 ## Technology
 
