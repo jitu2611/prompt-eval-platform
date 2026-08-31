@@ -2,7 +2,7 @@
 
 A cloud-neutral platform for versioning prompts, running repeatable evaluations, and comparing local LLM outputs before a prompt or model change reaches production.
 
-> **Status:** private, early development. It will be published only after API, tests, documentation, local demo, and CI meet the release checklist.
+> **Status:** public work in progress. Core prompt-version and dataset APIs are available; the evaluation-run workflow is tracked in the [v0.1.0 milestone](../../milestone/1). This repository does not yet represent a production release.
 
 ## Problem
 
