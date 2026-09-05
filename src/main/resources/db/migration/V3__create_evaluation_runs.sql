@@ -5,3 +5,6 @@ CREATE TABLE evaluation_runs (
     status VARCHAR(20) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
+
+CREATE INDEX idx_evaluation_runs_prompt_version ON evaluation_runs (prompt_version_id);
+CREATE INDEX idx_evaluation_runs_dataset ON evaluation_runs (dataset_id);
