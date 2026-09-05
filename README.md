@@ -94,6 +94,17 @@ Dataset names must be non-blank and at most 120 characters. A dataset needs at l
 case input-variable keys are non-blank and at most 120 characters, while input values and expected
 outputs are limited to 50,000 characters. Cases are retained in their submitted order.
 
+Queue an evaluation run by combining a prompt version ID from the template response with a dataset ID:
+
+```sh
+curl -i -X POST http://localhost:8080/api/evaluation-runs \
+  -H 'Content-Type: application/json' \
+  -d '{"promptVersionId":"<prompt-version-id>","datasetId":"<dataset-id>"}'
+```
+
+The run is persisted with `PENDING` status and can be retrieved from the URL in the `Location` header.
+Deterministic execution and case results are the next evaluation-workflow slice.
+
 ## Engineering standards
 
 - Issues, feature branches, and pull requests

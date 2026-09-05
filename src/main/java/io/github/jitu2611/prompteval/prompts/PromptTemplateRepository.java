@@ -4,4 +4,6 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 interface PromptTemplateRepository extends JpaRepository<PromptTemplate, UUID> {
+
+	boolean existsByVersionsId(UUID versionId);
 }
