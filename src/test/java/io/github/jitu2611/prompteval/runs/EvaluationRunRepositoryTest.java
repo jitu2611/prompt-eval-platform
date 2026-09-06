@@ -1,6 +1,7 @@
 package io.github.jitu2611.prompteval.runs;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.persistence.EntityManager;
 import java.sql.Timestamp;
@@ -9,6 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest
@@ -41,5 +43,13 @@ class EvaluationRunRepositoryTest {
 		assertThat(persisted.getPromptVersionId()).isEqualTo(promptVersionId);
 		assertThat(persisted.getDatasetId()).isEqualTo(datasetId);
 		assertThat(persisted.getStatus()).isEqualTo(EvaluationRunStatus.PENDING);
+	}
+
+	@Test
+	void rejectsRunsWithUnknownReferences() {
+		EvaluationRun run = new EvaluationRun(UUID.randomUUID(), UUID.randomUUID());
+
+		assertThatThrownBy(() -> repository.saveAndFlush(run))
+				.isInstanceOf(DataIntegrityViolationException.class);
 	}
 }
