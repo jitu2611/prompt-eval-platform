@@ -7,7 +7,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.jitu2611.prompteval.datasets.EvaluationDatasetLookup;
+import io.github.jitu2611.prompteval.datasets.EvaluationDatasetLookup.Case;
+import io.github.jitu2611.prompteval.datasets.EvaluationDatasetLookup.Dataset;
 import io.github.jitu2611.prompteval.prompts.PromptVersionLookup;
+import io.github.jitu2611.prompteval.runs.providers.EvaluationProvider;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,35 +35,52 @@ class EvaluationRunServiceTest {
 	@Mock
 	private EvaluationDatasetLookup datasets;
 
+	@Mock
+	private EvaluationProvider provider;
+
 	private EvaluationRunService service;
 
 	@BeforeEach
 	void setUp() {
-		service = new EvaluationRunService(repository, promptVersions, datasets);
+		service = new EvaluationRunService(repository, promptVersions, datasets, new PromptRenderer(), provider);
 	}
 
 	@Test
-	void createsAPendingRunForExistingInputs() {
+	void executesCasesAndCompletesRunWithExactMatchPassRate() {
 		UUID promptVersionId = UUID.randomUUID();
 		UUID datasetId = UUID.randomUUID();
-		when(promptVersions.exists(promptVersionId)).thenReturn(true);
-		when(datasets.exists(datasetId)).thenReturn(true);
+		UUID passingCaseId = UUID.randomUUID();
+		UUID failingCaseId = UUID.randomUUID();
+		when(promptVersions.findContent(promptVersionId)).thenReturn(Optional.of("Classify: {{ticket}}"));
+		when(datasets.find(datasetId)).thenReturn(Optional.of(new Dataset(List.of(
+				new Case(passingCaseId, 1, Map.of("ticket", "login"), "Classify: login"),
+				new Case(failingCaseId, 2, Map.of("ticket", "invoice"), "Billing")))));
+		when(provider.generate(any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(repository.save(any(EvaluationRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		EvaluationRunResponse response = service.create(new CreateEvaluationRunRequest(promptVersionId, datasetId));
 
-		assertThat(response.id()).isNotNull();
-		assertThat(response.promptVersionId()).isEqualTo(promptVersionId);
-		assertThat(response.datasetId()).isEqualTo(datasetId);
-		assertThat(response.status()).isEqualTo(EvaluationRunStatus.PENDING);
-		assertThat(response.createdAt()).isNotNull();
-		verify(repository).save(any(EvaluationRun.class));
+		assertThat(response.status()).isEqualTo(EvaluationRunStatus.COMPLETED);
+		assertThat(response.passRate()).isEqualTo(0.5);
+		assertThat(response.completedAt()).isNotNull();
+		assertThat(response.results()).hasSize(2);
+		assertThat(response.results().get(0))
+				.extracting(
+						EvaluationCaseResultResponse::evaluationCaseId,
+						EvaluationCaseResultResponse::renderedPrompt,
+						EvaluationCaseResultResponse::providerOutput,
+						EvaluationCaseResultResponse::passed)
+				.containsExactly(passingCaseId, "Classify: login", "Classify: login", true);
+		assertThat(response.results().get(1).passed()).isFalse();
+		assertThat(response.results()).allSatisfy(result -> assertThat(result.latencyMs()).isNotNegative());
+		verify(provider).generate("Classify: login");
+		verify(provider).generate("Classify: invoice");
 	}
 
 	@Test
 	void rejectsAnUnknownPromptVersion() {
 		UUID promptVersionId = UUID.randomUUID();
-		when(promptVersions.exists(promptVersionId)).thenReturn(false);
+		when(promptVersions.findContent(promptVersionId)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> service.create(new CreateEvaluationRunRequest(promptVersionId, UUID.randomUUID())))
 				.isInstanceOfSatisfying(ResponseStatusException.class,
@@ -69,8 +91,8 @@ class EvaluationRunServiceTest {
 	void rejectsAnUnknownDataset() {
 		UUID promptVersionId = UUID.randomUUID();
 		UUID datasetId = UUID.randomUUID();
-		when(promptVersions.exists(promptVersionId)).thenReturn(true);
-		when(datasets.exists(datasetId)).thenReturn(false);
+		when(promptVersions.findContent(promptVersionId)).thenReturn(Optional.of("prompt"));
+		when(datasets.find(datasetId)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> service.create(new CreateEvaluationRunRequest(promptVersionId, datasetId)))
 				.isInstanceOfSatisfying(ResponseStatusException.class,
@@ -78,11 +100,21 @@ class EvaluationRunServiceTest {
 	}
 
 	@Test
-	void retrievesAnExistingRun() {
+	void retrievesAnExistingRunWithResults() {
 		EvaluationRun run = new EvaluationRun(UUID.randomUUID(), UUID.randomUUID());
+		run.addResult(UUID.randomUUID(), 1, "rendered", "rendered", 3, true);
+		run.complete();
 		when(repository.findById(run.getId())).thenReturn(Optional.of(run));
 
-		assertThat(service.get(run.getId()).id()).isEqualTo(run.getId());
+		EvaluationRunResponse response = service.get(run.getId());
+
+		assertThat(response.id()).isEqualTo(run.getId());
+		assertThat(response.results()).singleElement().satisfies(result -> {
+			assertThat(result.renderedPrompt()).isEqualTo("rendered");
+			assertThat(result.providerOutput()).isEqualTo("rendered");
+			assertThat(result.latencyMs()).isEqualTo(3);
+			assertThat(result.passed()).isTrue();
+		});
 	}
 
 	@Test

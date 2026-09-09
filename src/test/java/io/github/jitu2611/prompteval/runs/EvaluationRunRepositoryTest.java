@@ -26,23 +26,36 @@ class EvaluationRunRepositoryTest {
 	private EntityManager entityManager;
 
 	@Test
-	void persistsReferencesAndPendingStatus() {
+	void persistsCompletedRunAndCaseResults() {
 		UUID templateId = UUID.randomUUID();
 		UUID promptVersionId = UUID.randomUUID();
 		UUID datasetId = UUID.randomUUID();
+		UUID evaluationCaseId = UUID.randomUUID();
 		Timestamp now = Timestamp.from(Instant.now());
 		jdbc.update("INSERT INTO prompt_templates (id, name, created_at) VALUES (?, ?, ?)", templateId, "support", now);
 		jdbc.update("INSERT INTO prompt_template_versions (id, template_id, version_number, content, created_at) VALUES (?, ?, ?, ?, ?)",
 				promptVersionId, templateId, 1, "Summarize {{ticket}}", now);
 		jdbc.update("INSERT INTO evaluation_datasets (id, name, created_at) VALUES (?, ?, ?)", datasetId, "tickets", now);
+		jdbc.update("INSERT INTO evaluation_cases (id, dataset_id, case_number, input_variables, expected_output, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+				evaluationCaseId, datasetId, 1, "{\"ticket\":\"Cannot log in\"}", "Summarize Cannot log in", now);
+		EvaluationRun run = new EvaluationRun(promptVersionId, datasetId);
+		run.addResult(evaluationCaseId, 1, "Summarize Cannot log in", "Summarize Cannot log in", 4, true);
+		run.complete();
 
-		EvaluationRun run = repository.saveAndFlush(new EvaluationRun(promptVersionId, datasetId));
+		repository.saveAndFlush(run);
 		entityManager.clear();
 
 		EvaluationRun persisted = repository.findById(run.getId()).orElseThrow();
-		assertThat(persisted.getPromptVersionId()).isEqualTo(promptVersionId);
-		assertThat(persisted.getDatasetId()).isEqualTo(datasetId);
-		assertThat(persisted.getStatus()).isEqualTo(EvaluationRunStatus.PENDING);
+		assertThat(persisted.getStatus()).isEqualTo(EvaluationRunStatus.COMPLETED);
+		assertThat(persisted.getPassRate()).isEqualTo(1.0);
+		assertThat(persisted.getCompletedAt()).isNotNull();
+		assertThat(persisted.getResults()).singleElement().satisfies(result -> {
+			assertThat(result.getEvaluationCaseId()).isEqualTo(evaluationCaseId);
+			assertThat(result.getRenderedPrompt()).isEqualTo("Summarize Cannot log in");
+			assertThat(result.getProviderOutput()).isEqualTo("Summarize Cannot log in");
+			assertThat(result.getLatencyMs()).isEqualTo(4);
+			assertThat(result.isPassed()).isTrue();
+		});
 	}
 
 	@Test

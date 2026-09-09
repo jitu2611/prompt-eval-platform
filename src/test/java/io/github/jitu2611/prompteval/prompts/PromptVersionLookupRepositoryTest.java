@@ -24,7 +24,7 @@ class PromptVersionLookupRepositoryTest {
 		PromptTemplateVersion version = template.addVersion("Summarize {{ticket}}");
 		repository.saveAndFlush(template);
 
-		assertThat(lookup.exists(version.getId())).isTrue();
-		assertThat(lookup.exists(UUID.randomUUID())).isFalse();
+		assertThat(lookup.findContent(version.getId())).contains("Summarize {{ticket}}");
+		assertThat(lookup.findContent(UUID.randomUUID())).isEmpty();
 	}
 }
