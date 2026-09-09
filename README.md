@@ -2,7 +2,7 @@
 
 A cloud-neutral platform for versioning prompts, running repeatable evaluations, and comparing local LLM outputs before a prompt or model change reaches production.
 
-> **Status:** public work in progress. Core prompt-version and dataset APIs are available; the evaluation-run workflow is tracked in the [v0.1.0 milestone](../../milestone/1). This repository does not yet represent a production release.
+> **Status:** public work in progress. The core prompt-version, dataset, and deterministic evaluation-run APIs are available. This repository does not yet represent a production release.
 
 ## Release progress
 
@@ -38,72 +38,76 @@ The first release is a modular monolith. Its domain boundaries are prompt catalo
 
 Java 21, Spring Boot, PostgreSQL, React, Maven, Docker, Kubernetes, Prometheus, and optional Ollama. The local development path uses only free and open-source software.
 
-## Local API usage
+## Complete local API workflow
 
-Run PostgreSQL locally, set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and
-`SPRING_DATASOURCE_PASSWORD`, then start the application with `./mvnw spring-boot:run`.
-Flyway creates the prompt catalog tables on startup.
-
-Create a template; its submitted content becomes immutable version 1:
+Prerequisites are Java 21, a running PostgreSQL instance, `curl`, and `jq`. Create an empty
+`prompt_eval` database, then start the API in one terminal (adjust the credentials for your local
+PostgreSQL installation):
 
 ```sh
-curl -i -X POST http://localhost:8080/api/prompt-templates \
+export SPRING_DATASOURCE_URL='jdbc:postgresql://localhost:5432/prompt_eval'
+export SPRING_DATASOURCE_USERNAME='postgres'
+export SPRING_DATASOURCE_PASSWORD='postgres'
+./mvnw spring-boot:run
+```
+
+Flyway creates and migrates the tables on startup. In a second terminal, copy and paste this entire
+block to create a template and its second immutable version, create a two-case dataset, execute that
+version, and retrieve the persisted results:
+
+```sh
+set -eu
+API='http://localhost:8080/api'
+
+TEMPLATE=$(curl --fail-with-body -sS -X POST "$API/prompt-templates" \
   -H 'Content-Type: application/json' \
-  -d '{"name":"support-summary","content":"Summarize this ticket: {{ticket}}"}'
-```
+  -d '{"name":"ticket-classifier","content":"Legacy classification: {{ticket}}"}')
+TEMPLATE_ID=$(printf '%s' "$TEMPLATE" | jq -r '.id')
+printf '%s\n' "$TEMPLATE" | jq
 
-Create a revision by using the returned template ID. Existing versions are retained unchanged:
-
-```sh
-curl -i -X POST http://localhost:8080/api/prompt-templates/<template-id>/versions \
+VERSIONED_TEMPLATE=$(curl --fail-with-body -sS -X POST \
+  "$API/prompt-templates/$TEMPLATE_ID/versions" \
   -H 'Content-Type: application/json' \
-  -d '{"content":"Give a concise summary of this ticket: {{ticket}}"}'
-```
+  -d '{"content":"Classify: {{ticket}}"}')
+PROMPT_VERSION_ID=$(printf '%s' "$VERSIONED_TEMPLATE" | \
+  jq -r '.versions[] | select(.version == 2) | .id')
+printf '%s\n' "$VERSIONED_TEMPLATE" | jq
 
-Retrieve a template and its versions, ordered by version number:
-
-```sh
-curl -i http://localhost:8080/api/prompt-templates/<template-id>
-```
-
-Template names must be non-blank and at most 120 characters. Version content must be non-blank
-and at most 50,000 characters.
-
-Create an evaluation dataset with one or more repeatable cases. Each case supplies prompt input
-variables and the output expected by a future evaluator:
-
-```sh
-curl -i -X POST http://localhost:8080/api/evaluation-datasets \
+DATASET=$(curl --fail-with-body -sS -X POST "$API/evaluation-datasets" \
   -H 'Content-Type: application/json' \
   -d '{
-    "name":"support-ticket-classification",
-    "cases":[{
-      "inputVariables":{"ticket":"I cannot log in"},
-      "expectedOutput":"Login issue"
-    }]
-  }'
-```
+    "name":"ticket-cases",
+    "cases":[
+      {
+        "inputVariables":{"ticket":"Cannot log in"},
+        "expectedOutput":"Classify: Cannot log in"
+      },
+      {
+        "inputVariables":{"ticket":"Invoice is wrong"},
+        "expectedOutput":"Billing issue"
+      }
+    ]
+  }')
+DATASET_ID=$(printf '%s' "$DATASET" | jq -r '.id')
+printf '%s\n' "$DATASET" | jq
 
-Retrieve a dataset and its cases, ordered by case number, using the returned dataset ID:
-
-```sh
-curl -i http://localhost:8080/api/evaluation-datasets/<dataset-id>
-```
-
-Dataset names must be non-blank and at most 120 characters. A dataset needs at least one case;
-case input-variable keys are non-blank and at most 120 characters, while input values and expected
-outputs are limited to 50,000 characters. Cases are retained in their submitted order.
-
-Queue an evaluation run by combining a prompt version ID from the template response with a dataset ID:
-
-```sh
-curl -i -X POST http://localhost:8080/api/evaluation-runs \
+RUN=$(curl --fail-with-body -sS -X POST "$API/evaluation-runs" \
   -H 'Content-Type: application/json' \
-  -d '{"promptVersionId":"<prompt-version-id>","datasetId":"<dataset-id>"}'
+  -d "{\"promptVersionId\":\"$PROMPT_VERSION_ID\",\"datasetId\":\"$DATASET_ID\"}")
+RUN_ID=$(printf '%s' "$RUN" | jq -r '.id')
+printf '%s\n' "$RUN" | jq
+
+curl --fail-with-body -sS "$API/evaluation-runs/$RUN_ID" | jq
 ```
 
-The run is persisted with `PENDING` status and can be retrieved from the URL in the `Location` header.
-Deterministic execution and case results are the next evaluation-workflow slice.
+The built-in deterministic local provider echoes each safely rendered prompt. Consequently, the
+first case passes, the second fails, and both the create and retrieve responses report `COMPLETED`,
+a `passRate` of `0.5`, per-case rendered prompts, provider outputs, pass/fail outcomes, and latency.
+No external model or paid API is involved.
+
+Template names and dataset names must be non-blank and at most 120 characters. Prompt content,
+input values, and expected outputs are limited to 50,000 characters. A dataset requires at least one
+case; cases and prompt versions are returned in their original order.
 
 ## Engineering standards
 
