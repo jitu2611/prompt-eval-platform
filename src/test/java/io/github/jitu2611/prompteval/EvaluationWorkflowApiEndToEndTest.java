@@ -2,8 +2,8 @@ package io.github.jitu2611.prompteval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -111,8 +111,7 @@ class EvaluationWorkflowApiEndToEndTest {
 
 		assertThat(retrievedRun).usingRecursiveComparison()
 				.withEqualsForType(
-						(first, second) -> first.truncatedTo(ChronoUnit.MICROS)
-								.equals(second.truncatedTo(ChronoUnit.MICROS)),
+						(first, second) -> Duration.between(first, second).abs().compareTo(Duration.ofNanos(1_000)) <= 0,
 						Instant.class)
 				.isEqualTo(createdRun);
 	}
