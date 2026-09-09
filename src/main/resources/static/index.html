@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Run deterministic prompt evaluations locally.">
+  <title>Prompt Evaluation Lab</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to evaluation workspace</a>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Prompt Evaluation Lab home">
+      <span class="brand-mark" aria-hidden="true">P</span>
+      <span>Prompt Evaluation Lab</span>
+    </a>
+    <span class="local-badge"><span aria-hidden="true">●</span> Local only</span>
+  </header>
+
+  <main id="workspace">
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Deterministic evaluation workspace</p>
+        <h1 id="page-title">Test a prompt.<br><span>See every result.</span></h1>
+        <p class="hero-copy">Create a prompt and dataset, then run them through the built-in echo provider. No API key, model download, or external service required.</p>
+      </div>
+      <ol class="workflow-map" aria-label="Evaluation workflow">
+        <li><span>01</span> Define prompt</li>
+        <li><span>02</span> Build dataset</li>
+        <li><span>03</span> Inspect results</li>
+      </ol>
+    </section>
+
+    <section class="workspace-grid" aria-label="Evaluation builder">
+      <form id="evaluation-form" class="builder-card">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">Steps 01 + 02</p>
+            <h2>Build your evaluation</h2>
+          </div>
+          <button class="text-button" id="reset-button" type="button">Reset example</button>
+        </div>
+
+        <fieldset>
+          <legend><span>01</span> Prompt</legend>
+          <div class="field-grid two-column">
+            <div class="field">
+              <label for="prompt-name">Prompt name</label>
+              <input id="prompt-name" name="promptName" maxlength="120" required autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="variable-name">Variable name</label>
+              <div class="input-affix"><span aria-hidden="true">{{</span><input id="variable-name" name="variableName" maxlength="80" required pattern="[A-Za-z0-9_.-]+" aria-describedby="variable-help"><span aria-hidden="true">}}</span></div>
+              <small id="variable-help">Use this placeholder in your prompt.</small>
+            </div>
+          </div>
+          <div class="field">
+            <label for="prompt-content">Prompt content</label>
+            <textarea id="prompt-content" name="promptContent" rows="4" maxlength="50000" required aria-describedby="prompt-help"></textarea>
+            <small id="prompt-help">The local provider returns the rendered prompt exactly as shown.</small>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span>02</span> Dataset</legend>
+          <div class="field">
+            <label for="dataset-name">Dataset name</label>
+            <input id="dataset-name" name="datasetName" maxlength="120" required autocomplete="off">
+          </div>
+          <div class="cases-heading">
+            <div>
+              <h3>Test cases</h3>
+              <p>Expected output must exactly match the rendered prompt to pass.</p>
+            </div>
+            <button class="secondary-button" id="add-case" type="button"><span aria-hidden="true">＋</span> Add case</button>
+          </div>
+          <div id="cases" class="cases-list"></div>
+        </fieldset>
+
+        <div id="form-message" class="message" role="alert" tabindex="-1" hidden></div>
+        <button id="run-button" class="primary-button" type="submit">
+          <span class="button-label">Run deterministic evaluation</span>
+          <span class="button-arrow" aria-hidden="true">→</span>
+        </button>
+      </form>
+
+      <section id="results-panel" class="results-card" aria-labelledby="results-title" aria-live="polite" aria-busy="false">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">Step 03</p>
+            <h2 id="results-title">Results</h2>
+          </div>
+          <span id="run-status" class="status-pill neutral">Ready</span>
+        </div>
+
+        <div id="empty-state" class="empty-state">
+          <div class="empty-graphic" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h3>Ready when you are</h3>
+          <p>Your pass rate, outputs, and case latency will appear here after one local run.</p>
+        </div>
+
+        <div id="loading-state" class="loading-state" hidden>
+          <div class="spinner" aria-hidden="true"></div>
+          <h3>Running evaluation…</h3>
+          <p id="loading-detail">Creating prompt</p>
+        </div>
+
+        <div id="results-content" hidden>
+          <div class="score-card">
+            <div class="score-ring" id="score-ring"><strong id="pass-rate">0%</strong><span>pass rate</span></div>
+            <div>
+              <p class="score-kicker">Evaluation complete</p>
+              <h3 id="score-summary">0 of 0 cases passed</h3>
+              <p id="run-meta" class="run-meta"></p>
+            </div>
+          </div>
+          <div class="result-list-heading">
+            <h3>Case details</h3>
+            <span id="total-latency"></span>
+          </div>
+          <div id="result-list" class="result-list"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    <p>Built-in deterministic provider · Data stays in your local database</p>
+  </footer>
+
+  <template id="case-template">
+    <article class="case-card">
+      <div class="case-title-row">
+        <h4>Case <span class="case-number"></span></h4>
+        <button class="remove-case" type="button" aria-label="Remove case">Remove</button>
+      </div>
+      <div class="field">
+        <label class="case-input-label">Input value</label>
+        <input class="case-input" maxlength="50000" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label class="case-expected-label">Expected output</label>
+        <textarea class="case-expected" rows="3" maxlength="50000" required></textarea>
+      </div>
+    </article>
+  </template>
+</body>
+</html>
