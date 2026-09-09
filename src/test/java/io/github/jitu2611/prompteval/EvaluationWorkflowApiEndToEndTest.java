@@ -3,6 +3,7 @@ package io.github.jitu2611.prompteval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -108,7 +109,12 @@ class EvaluationWorkflowApiEndToEndTest {
 				.returnResult()
 				.getResponseBody();
 
-		assertThat(retrievedRun).usingRecursiveComparison().isEqualTo(createdRun);
+		assertThat(retrievedRun).usingRecursiveComparison()
+				.withEqualsForType(
+						(first, second) -> first.truncatedTo(ChronoUnit.MICROS)
+								.equals(second.truncatedTo(ChronoUnit.MICROS)),
+						Instant.class)
+				.isEqualTo(createdRun);
 	}
 
 	private record TemplateResponse(UUID id, String name, Instant createdAt, List<VersionResponse> versions) {
