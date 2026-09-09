@@ -10,9 +10,9 @@
 	</parent>
 	<groupId>io.github.jitu2611</groupId>
 	<artifactId>prompt-eval-platform</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1.0</version>
 	<name>Prompt Evaluation Platform</name>
-	<description>Version, evaluate, and compare prompts against local LLMs</description>
+	<description>Version prompts and run deterministic dataset evaluations locally</description>
 	<url/>
 	<licenses>
 		<license><name>MIT License</name><url>https://opensource.org/licenses/MIT</url></license>
