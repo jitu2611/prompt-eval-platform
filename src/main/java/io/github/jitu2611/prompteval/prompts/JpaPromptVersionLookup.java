@@ -1,5 +1,6 @@
 package io.github.jitu2611.prompteval.prompts;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +14,7 @@ class JpaPromptVersionLookup implements PromptVersionLookup {
 	}
 
 	@Override
-	public boolean exists(UUID promptVersionId) {
-		return repository.existsByVersionsId(promptVersionId);
+	public Optional<String> findContent(UUID promptVersionId) {
+		return repository.findVersionContentById(promptVersionId);
 	}
 }

@@ -2,10 +2,12 @@ package io.github.jitu2611.prompteval.runs;
 
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.stereotype.Component;
 
 /**
  * Renders double-braced dataset variables with a single, literal substitution pass.
  */
+@Component
 final class PromptRenderer {
 
 	String render(String promptContent, Map<String, String> variables) {

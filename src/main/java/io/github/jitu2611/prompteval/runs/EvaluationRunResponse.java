@@ -1,6 +1,7 @@
 package io.github.jitu2611.prompteval.runs;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 record EvaluationRunResponse(
@@ -8,5 +9,22 @@ record EvaluationRunResponse(
 		UUID promptVersionId,
 		UUID datasetId,
 		EvaluationRunStatus status,
-		Instant createdAt) {
+		Double passRate,
+		Instant createdAt,
+		Instant completedAt,
+		List<EvaluationCaseResultResponse> results) {
+
+	EvaluationRunResponse {
+		results = List.copyOf(results);
+	}
+}
+
+record EvaluationCaseResultResponse(
+		UUID id,
+		UUID evaluationCaseId,
+		int caseNumber,
+		String renderedPrompt,
+		String providerOutput,
+		long latencyMs,
+		boolean passed) {
 }

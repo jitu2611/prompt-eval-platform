@@ -39,7 +39,10 @@ class EvaluationDatasetRepositoryTest {
 				.containsExactly(Map.of("ticket", "Cannot log in"), Map.of("ticket", "Invoice is wrong"));
 		assertThat(persisted.getCases()).extracting(EvaluationCase::getExpectedOutput)
 				.containsExactly("Login issue", "Billing issue");
-		assertThat(lookup.exists(dataset.getId())).isTrue();
-		assertThat(lookup.exists(UUID.randomUUID())).isFalse();
+		EvaluationDatasetLookup.Dataset lookupDataset = lookup.find(dataset.getId()).orElseThrow();
+		assertThat(lookupDataset.cases()).extracting(EvaluationDatasetLookup.Case::caseNumber).containsExactly(1, 2);
+		assertThat(lookupDataset.cases()).extracting(EvaluationDatasetLookup.Case::inputVariables)
+				.containsExactly(Map.of("ticket", "Cannot log in"), Map.of("ticket", "Invoice is wrong"));
+		assertThat(lookup.find(UUID.randomUUID())).isEmpty();
 	}
 }

@@ -1,5 +1,6 @@
 package io.github.jitu2611.prompteval.datasets;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +14,14 @@ class JpaEvaluationDatasetLookup implements EvaluationDatasetLookup {
 	}
 
 	@Override
-	public boolean exists(UUID datasetId) {
-		return repository.existsById(datasetId);
+	public Optional<Dataset> find(UUID datasetId) {
+		return repository.findWithCasesById(datasetId)
+				.map(dataset -> new Dataset(dataset.getCases().stream()
+						.map(evaluationCase -> new Case(
+								evaluationCase.getId(),
+								evaluationCase.getCaseNumber(),
+								evaluationCase.getInputVariables(),
+								evaluationCase.getExpectedOutput()))
+						.toList()));
 	}
 }
